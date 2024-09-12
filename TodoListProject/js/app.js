@@ -1,21 +1,27 @@
-import {
-  addTodo,
-  removeTodo,
-  doTodo,
-  filterAllTodos,
-  filterCompletedTodos,
-  filterIncompletedTodos,
-} from "../Redux/actions.js";
+import { addTodo, removeTodo, doTodo, getAllTodos } from "../Redux/actions.js";
 
-import { addTodoAction } from "../Redux/actionCreators.js";
+import {
+  addTodoAction,
+  removeTodoAction,
+  doTodoAction,
+  getAllTodosAction,
+} from "../Redux/actionCreators.js";
+
+window.removeTodoHandler = removeTodoHandler;
+window.doTodoHandler = doTodoHandler;
 
 const todoInputElem = document.querySelector(".todo-input");
 const addTodoBtn = document.querySelector(".todo-button");
 const todosContainer = document.querySelector(".todo-list");
+const todoFilteringElem = document.querySelector(".filter-todo");
 
 // Create Todolist Reducer
 function todolistReducer(state = [], action) {
+  console.log("Action", action);
   switch (action.type) {
+    case getAllTodos: {
+      return state;
+    }
     case addTodo: {
       let newState = [...state];
       let newTodoObj = {
@@ -28,19 +34,18 @@ function todolistReducer(state = [], action) {
       return newState;
     }
     case removeTodo: {
-      return state;
+      let copyState = [...state];
+      let newState = copyState.filter((todo) => todo.id !== action.id);
+      return newState;
     }
     case doTodo: {
-      return state;
-    }
-    case filterAllTodos: {
-      return state;
-    }
-    case filterCompletedTodos: {
-      return state;
-    }
-    case filterIncompletedTodos: {
-      return state;
+      let newState = [...state];
+      newState.some((todo) => {
+        if (todo.id === action.id) {
+          todo.isCompleted = !todo.isCompleted;
+        }
+      });
+      return newState;
     }
     default: {
       return state;
@@ -49,7 +54,7 @@ function todolistReducer(state = [], action) {
 }
 
 // Create Store
-const store = Redux.createStore(todolistReducer);
+const store = createStore(todolistReducer);
 console.log(store);
 
 addTodoBtn.addEventListener("click", (event) => {
@@ -59,10 +64,38 @@ addTodoBtn.addEventListener("click", (event) => {
   const todos = store.getState();
   todoInputElem.value = "";
   generateTodosInDom(todos);
-  console.log(todos);
+  console.log("Todos", todos);
 });
 
-function removeTodoHandler(todoID)
+todoFilteringElem.addEventListener("change", (event) => {
+  store.dispatch(getAllTodosAction());
+  let todos = store.getState();
+
+  if (event.target.value === "all") {
+    generateTodosInDom(todos);
+  } else if (event.target.value === "completed") {
+    let completedTodos = todos.filter((todo) => todo.isCompleted);
+    generateTodosInDom(completedTodos);
+  } else if (event.target.value === "incomplete") {
+    let inCompletedTodos = todos.filter((todo) => !todo.isCompleted);
+    generateTodosInDom(inCompletedTodos);
+  }
+  console.log("Todos", todos);
+});
+
+function removeTodoHandler(todoID) {
+  store.dispatch(removeTodoAction(todoID));
+  const todos = store.getState();
+  generateTodosInDom(todos);
+  console.log("Todos", todos);
+}
+
+function doTodoHandler(todoID) {
+  store.dispatch(doTodoAction(todoID));
+  const todos = store.getState();
+  generateTodosInDom(todos);
+  console.log("Todos", todos);
+}
 
 function generateTodosInDom(todos) {
   todosContainer.innerHTML = "";
@@ -70,12 +103,16 @@ function generateTodosInDom(todos) {
     todosContainer.insertAdjacentHTML(
       "beforeend",
       `
-            <div class="todo">
+            <div class="todo ${todo.isCompleted && "completed"}">
                 <li class="todo-item">${todo.title}</li>
-                <button class="complete-btn">
+                <button class="complete-btn" onclick=doTodoHandler("${
+                  todo.id
+                }")>
                     <i class="fas fa-check-circle"></i>
                 </button>
-                <button class="trash-btn" onclick=>
+                <button class="trash-btn" onclick=removeTodoHandler("${
+                  todo.id
+                }")>
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
